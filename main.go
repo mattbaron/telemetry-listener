@@ -2,33 +2,36 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"os"
 
 	"github.com/mattbaron/telemetry-listener/listener"
 )
 
-func test() {
-	h := func(w http.ResponseWriter, request *http.Request) {
-		fmt.Println("Hello")
-		fmt.Println(request.ContentLength)
-	}
+// func test() {
+// 	h := func(w http.ResponseWriter, request *http.Request) {
+// 		fmt.Println("Hello")
+// 		fmt.Println(request.ContentLength)
+// 	}
 
-	http.HandleFunc("/test", h)
-	http.ListenAndServe(":8080", nil)
-}
+// 	http.HandleFunc("/test", h)
+// 	http.ListenAndServe(":8080", nil)
+// }
 
 func main() {
-	l := listener.MakeListener()
+	metricListner := listener.MakeListener()
 
-	eventChannel := make(chan listener.Event)
-	l.AddEventListener(eventChannel)
+	eventChannel := metricListner.NewEventChannel()
 	go func() {
 		for event := range eventChannel {
-			fmt.Println(event.Message)
+			if event.Type >= listener.ERROR {
+				fmt.Printf("Fatal error: %s\n", event.Message)
+				os.Exit(3)
+			} else {
+				fmt.Printf("Event: %d %s\n", event.Type, event.Message)
+			}
 		}
 	}()
 
-	l.Start()
-
-	<-make(chan int)
+	metricListner.Start()
+	metricListner.WaitUntilDone()
 }

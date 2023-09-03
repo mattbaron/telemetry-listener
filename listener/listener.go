@@ -8,23 +8,29 @@ import (
 	"time"
 )
 
-type Listener struct {
-	server http.Server
-	mux    http.ServeMux
+const (
+	TRACE = iota
+	DEBUG = iota
+	INFO  = iota
+	WARN  = iota
+	ERROR = iota
+	FATAL = iota
+)
 
+type Listener struct {
 	ServiceAddress string
 	ReadTimeout    time.Duration
 	WriteTimeout   time.Duration
-
-	eventChannel chan (Event)
-
-	writeCount int64
-	pingCount  int64
+	server         http.Server
+	mux            http.ServeMux
+	eventChannels  []chan Event
+	writeCount     int64
+	pingCount      int64
 }
 
 type Event struct {
-	Fatal   bool
 	Message string
+	Type    int
 }
 
 func MakeListener() *Listener {
@@ -32,7 +38,7 @@ func MakeListener() *Listener {
 		ReadTimeout:    time.Second * 5,
 		WriteTimeout:   time.Second * 5,
 		ServiceAddress: ":8080",
-		eventChannel:   nil,
+		eventChannels:  make([]chan Event, 0),
 	}
 
 	return l
@@ -44,29 +50,33 @@ func (l *Listener) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 func (l *Listener) Start() {
 	l.prepare()
+
 	go func() {
+		l.event("Staring server", INFO)
 		err := l.server.ListenAndServe()
 		if err != nil {
-			fmt.Println("Failed to start Listener")
-		} else {
-			fmt.Printf("Started server on %s\n", l.ServiceAddress)
-			l.reportEvent(false, "Server Started")
+			l.event("Failed to start server", FATAL)
 		}
 	}()
 }
 
+func (l *Listener) WaitUntilDone() {
+	<-make(chan int)
+}
+
 func (l *Listener) Stop() {
-	fmt.Println("Stop()")
 	l.server.Shutdown(context.Background())
 }
 
-func (l *Listener) AddEventListener(channel chan Event) {
-	l.eventChannel = channel
+func (l *Listener) NewEventChannel() chan Event {
+	channel := make(chan Event)
+	l.eventChannels = append(l.eventChannels, channel)
+	return channel
 }
 
-func (l *Listener) reportEvent(fatal bool, message string) {
-	if l.eventChannel != nil {
-		l.eventChannel <- Event{Fatal: fatal, Message: message}
+func (l *Listener) event(message string, eventType int) {
+	for _, channel := range l.eventChannels {
+		channel <- Event{Message: message, Type: eventType}
 	}
 }
 
@@ -81,7 +91,8 @@ func (l *Listener) prepare() {
 	l.mux.HandleFunc("/ping", (func(response http.ResponseWriter, request *http.Request) {
 		l.pingCount += 1
 		fmt.Printf("%d /ping\n", l.pingCount)
-		handlePing(response, request)
+		response.WriteHeader(http.StatusOK)
+		response.Write([]byte("Foobar"))
 	}))
 
 	l.mux.HandleFunc("/write", (func(response http.ResponseWriter, request *http.Request) {
@@ -94,9 +105,4 @@ func (l *Listener) prepare() {
 
 		fmt.Printf("%d /write\n%s\n", l.pingCount, body)
 	}))
-}
-
-func handlePing(response http.ResponseWriter, request *http.Request) {
-	response.WriteHeader(http.StatusOK)
-	response.Write([]byte("Foobar"))
 }
