@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/mattbaron/telemetry-listener/client"
 )
 
 const (
@@ -98,11 +100,25 @@ func (l *Listener) prepare() {
 	l.mux.HandleFunc("/write", (func(response http.ResponseWriter, request *http.Request) {
 		l.writeCount += 1
 
+		client := client.Client{Name: "Test", NodeGroup: "foo", Database: "bar"}
+
 		body, err := io.ReadAll(request.Body)
 		if err != nil {
-			fmt.Printf("ERROR: %v\n", err)
+			response.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
-		fmt.Printf("%d /write\n%s\n", l.pingCount, body)
+		batch := NewBatch(client)
+		if err == nil {
+			err := batch.ProcessAll(body)
+
+			if err != nil {
+
+			}
+
+			batch.Serialize()
+		} else {
+			fmt.Printf("ERROR: %v\n", err)
+		}
 	}))
 }

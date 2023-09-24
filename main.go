@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"time"
 
-	"github.com/mattbaron/telemetry-listener/publisher"
+	"github.com/mattbaron/telemetry-listener/splunk"
 )
 
 // func test() {
@@ -35,15 +35,39 @@ import (
 // 	metricListner.WaitUntilDone()
 // }
 
+// func main() {
+// 	amqp := publisher.NewAMQP()
+
+// 	amqp.Brokers = []string{"amqp://localhost:5672", "amqp://localhost:5672"}
+
+// 	err := amqp.Connect()
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
+
+// 	<-make(chan int)
+// }
+
 func main() {
-	amqp := publisher.NewAMQP()
+	// splunkConfig := splunk.NewConfig()
+	// splunkConfig.BatchSize = 30
+	// splunkConfig.FlushInterval = 3
+	// splunkConfig.Source = "Foo"
+	// splunkConfig.SourceType = "Bar"
+	// splunkConfig.Defaults["env"] = "production"
+	// splunk.Configure(splunkConfig)
+	// fmt.Println(splunkConfig)
 
-	amqp.Brokers = []string{"amqp://localhost:5672", "amqp://localhost:5672"}
+	splunk.Logger().Info("This is a test")
+	splunk.Logger().Error("An exception happened")
 
-	err := amqp.Connect()
-	if err != nil {
-		fmt.Println(err)
-	}
+	splunk.Logger().FlushEvents()
 
-	<-make(chan int)
+	time.Sleep(10 * time.Second)
+
+	//fmt.Println(data)
+
+	// metricListner := listener.MakeListener()
+	// metricListner.Start()
+	// metricListner.WaitUntilDone()
 }

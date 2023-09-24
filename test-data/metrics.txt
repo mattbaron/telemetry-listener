@@ -1,0 +1,5 @@
+foo,env=development abc=123
+foo,env=production def=456,age=53
+name,env=test first="Matt",last="Baron"
+bar,env=stage def=456,age=53
+foo,env=test def=99.042,age=41 1695398441422742000
